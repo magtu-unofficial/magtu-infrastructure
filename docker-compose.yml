@@ -1,0 +1,51 @@
+version: "3"
+
+services:
+  magtu-bot:
+    image: ivanik/magtu-bot
+    restart: always
+    networks:
+      - web
+    environment:
+      - PORT=8080
+      - MONGO_URI=mongodb://mongo/magtu
+      - VK_CONFIRM=
+      - VK_TOKEN=
+      - VK_SECRET=
+      - VK_PATH=/bot/vk
+
+      - TG_TOKEN=
+      - TG_URL=https://mpkbot.ivanik.ru/bot/tg
+      - TG_PATH=/bot/tg
+
+      - VIBER_TOKEN=
+      - VIBER_URL=https://mpkbot.ivanik.ru/bot/viber
+      - VIBER_PATH=/bot/viber
+
+      - ADMIN_BOT_TOKEN=
+      - ADMIN_ID=577079346
+      - NOTIFY_SECRET=CHANGEME
+
+  magtu-parser:
+    image: ivanik/magtu-parser
+    restart: always
+    networks:
+      - web
+    volumes:
+      - ./urls.json:/app/urls.json
+    environment:
+      - MONGO_URI=mongodb://mongo/magtu
+      - NODE_TLS_REJECT_UNAUTHORIZED=0
+      - BOT=http://magtu-bot:8080/notify?secret=CHANGEME
+  mongo:
+    image: mongo
+    restart: always
+    networks:
+      - web
+    volumes:
+      - ./data-db:/data/db
+
+networks:
+  web:
+    external:
+      name: nginx_web
