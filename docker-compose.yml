@@ -6,6 +6,7 @@ services:
     restart: always
     networks:
       - web
+      - magtu
     environment:
       - PORT=8080
       - MONGO_URI=mongodb://mongo/magtu
@@ -15,37 +16,60 @@ services:
       - VK_PATH=/bot/vk
 
       - TG_TOKEN=
-      - TG_URL=https://mpkbot.ivanik.ru/bot/tg
+      - TG_URL=https://bua.ivanik.ru/bot/tg
       - TG_PATH=/bot/tg
 
       - VIBER_TOKEN=
-      - VIBER_URL=https://mpkbot.ivanik.ru/bot/viber
+      - VIBER_URL=https://bua.ivanik.ru/bot/viber
       - VIBER_PATH=/bot/viber
 
       - ADMIN_BOT_TOKEN=
-      - ADMIN_ID=577079346
+      - ADMIN_ID=-
       - NOTIFY_SECRET=CHANGEME
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.magtu-bot.rule=Host(`bua.ivanik.ru`) && PathPrefix(`/bot`)
+      - traefik.http.routers.magtu-bot.entrypoints=https
 
   magtu-parser:
-    image: ivanik/magtu-parser
+    image: ivanik/magtu-parser:latest
     restart: always
     networks:
-      - web
+      - magtu
     volumes:
       - ./urls.json:/app/urls.json
     environment:
       - MONGO_URI=mongodb://mongo/magtu
       - NODE_TLS_REJECT_UNAUTHORIZED=0
       - BOT=http://magtu-bot:8080/notify?secret=CHANGEME
+  
   mongo:
-    image: mongo
+    image: mongo:5.0.9
+    restart: always
+    networks:
+      - magtu
+    volumes:
+      - ./data-db:/data/db
+  
+  magtu-api:
+    image: elerphore/magtu-pairs-access:prod-1.1
+    environment:
+      - SPRING_DATA_MONGODB_HOST=mongo
+      - SPRING_DATA_MONGODB_DATABASE=magtu
     restart: always
     networks:
       - web
-    volumes:
-      - ./data-db:/data/db
+      - magtu
+    labels:
+      - traefik.enable=true
+      - traefik.http.services.magtu-api.loadbalancer.server.port=8080
+      - traefik.http.routers.magtu-api.rule=Host(`ivanik.ru`) && PathPrefix(`/mpk/api`)
+      - traefik.http.routers.magtu-api.entrypoints=https
+      - traefik.http.routers.magtu-api.middlewares=magtu-api-stripprefix@docker
+      - traefik.http.middlewares.magtu-api-stripprefix.stripprefix.prefixes=/mpk/api
 
 networks:
   web:
     external:
-      name: nginx_web
+      name: web_web
+  magtu:
